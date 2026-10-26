@@ -5,14 +5,37 @@ ticket's stages and, on Pro and Enterprise, the organization's audit log. It kee
 database**, so the backend can't change history. Only the backend talks to it, over Railway's private
 network; it has no public domain.
 
-This is the empty, running service so far: config, health and deploys. Storing and reading events comes next
-(TL-663, TL-664, TL-665).
+So far it stores events (TL-663). Reading them back (TL-664) and retention (TL-665) come next.
 
 ## Routes
 
 | Route | What |
 |---|---|
 | `GET /health` | `200 {"name":"auditor","status":"pass"}` when its Postgres is reachable and usable, `503` with `"fail"` otherwise. It never shows addresses. |
+| `POST /internal/events` | the backend's events, up to 500 at a time: `{"events": [...]}` → `{"accepted": [ids], "rejected": [{"id", "reason"}]}`. Needs `Authorization: Bearer <AUDIT_SECRET>`. |
+
+`/internal/` routes are for the backend only. Without `AUDIT_SECRET` they refuse everything (503).
+
+### Events
+
+Each event is who did what to what, in which organization, and when:
+
+| Field | What |
+|---|---|
+| `id` | a UUID from the backend's outbox. A resend of an id already kept is accepted and changes nothing |
+| `org_id` | the Clerk organization |
+| `at` | when it happened (RFC 3339) |
+| `actor`, `actor_kind` | a user id, or an agent or service key's name; `person`, `agent`, `service`, or `system` with no actor |
+| `action` | `thing.happened`, e.g. `ticket.stage`, `api_key.created` |
+| `target_type`, `target_id`, `project_id` | what it was done to (optional) |
+| `data` | a JSON object up to 16 KB: details, **never secrets or ticket content** |
+
+Rejected events are listed with a reason, and the rest of the batch is still kept. Sending a rejected one again
+won't help.
+
+The `events` table is append-only. A trigger refuses every `UPDATE`, `DELETE` and `TRUNCATE`, except deletes in a
+transaction that has set `auditor.purging = 'on'`, which only the auditor's own retention and deletion does.
+Migrations run on boot.
 
 ## Configuration
 
@@ -24,7 +47,8 @@ are the same. A `.env` file is read when there is one; variables already set win
 | `RDS_URL` | the auditor's **own** Postgres (not the backend's). Or `RDS_HOSTNAME`, `RDS_PORT`, `RDS_DB`, `RDS_USERNAME`, `RDS_PASSWORD` |
 | `PORT` / `HTTP_PORT` | where it listens: Railway's `PORT`, else `HTTP_PORT` (8080 in the image) |
 | `BUGFIXES_AGENT_KEY`, `BUGFIXES_AGENT_SECRET` | the [Bugfixes](https://bugfix.es) agent; reports are sent as the service `auditor`. Without them, or with `BUGFIXES_LOCAL_ONLY=true`, errors are only logged |
-| `OP_SERVICE_ACCOUNT_TOKEN` | 1Password: with it, the Bugfixes variables come from the `tracklines` vault, item `bugfixes_auditor` (`username` is the agent key, `credential` the secret) |
+| `AUDIT_SECRET` | the token the backend sends. The backend's copy is the same value |
+| `OP_SERVICE_ACCOUNT_TOKEN` | 1Password: with it, secrets come from the `tracklines` vault: `bugfixes_auditor` (`username` is the agent key, `credential` the secret), and `audit_auditor` (`credential` → `AUDIT_SECRET`) |
 
 ## Railway
 

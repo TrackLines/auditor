@@ -12,6 +12,7 @@ import (
 
 	bugfixes "github.com/bugfixes/go-bugfixes"
 	"github.com/bugfixes/go-bugfixes/logs"
+	"github.com/caarlos0/env/v8"
 	"github.com/joho/godotenv"
 	configbugfixes "github.com/keloran/go-config/v2/bugfixes"
 	"github.com/keloran/go-config/v2/database/postgres"
@@ -26,6 +27,9 @@ type Config struct {
 	Local    local.System
 	Database postgres.System
 	Bugfixes configbugfixes.System
+	// Secret is the token the backend sends to /internal/ routes (1Password audit_auditor; the
+	// backend's copy is audit_backend). Without it those routes refuse everything.
+	Secret string `env:"AUDIT_SECRET"`
 }
 
 // secrets come from 1Password's tracklines vault, an item per service; nothing without
@@ -33,6 +37,7 @@ type Config struct {
 var secrets = map[string]string{
 	"bugfixes_auditor.username":   "BUGFIXES_AGENT_KEY",
 	"bugfixes_auditor.credential": "BUGFIXES_AGENT_SECRET",
+	"audit_auditor.credential":    "AUDIT_SECRET",
 }
 
 // Build reads .env (if there is one; the environment wins), 1Password, then each part's settings, and
@@ -57,6 +62,9 @@ func Build() (*Config, error) {
 		return nil, fmt.Errorf("bugfixes: %w", err)
 	}
 	c := &Config{Local: *l, Database: *db, Bugfixes: *bf}
+	if err := env.Parse(c); err != nil {
+		return nil, fmt.Errorf("auditor settings: %w", err)
+	}
 
 	bugfixesConfig := bugfixes.Config{
 		Server:      c.Bugfixes.Server,

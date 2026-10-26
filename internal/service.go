@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"log"
@@ -15,19 +16,41 @@ import (
 	"github.com/bugfixes/go-bugfixes/logs"
 	"github.com/jackc/pgx/v5/pgxpool"
 	healthcheck "github.com/keloran/go-healthcheck"
+
+	"github.com/tracklines/auditor/internal/events"
 )
 
 type Service struct {
 	DB     *pgxpool.Pool
 	DBAddr string // host:port, for the health check's own probe
 	Port   string
+	Secret string // the backend's bearer token for /internal/ (AUDIT_SECRET); without it they're refused
 }
 
 // Handler declares every route.
 func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
+	ev := events.Store{DB: s.DB}
+	mux.Handle("POST /internal/events", s.backendOnly(ev.Ingest)) // TL-663
 	return mux
+}
+
+// backendOnly lets through requests carrying the shared secret (compared in constant time). With no
+// secret configured nothing gets through, so a missing setting can never leave the routes open.
+func (s *Service) backendOnly(h http.HandlerFunc) http.Handler {
+	want := []byte("Bearer " + s.Secret)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.Secret == "" {
+			http.Error(w, "not configured", http.StatusServiceUnavailable)
+			return
+		}
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), want) != 1 {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		h(w, r)
+	})
 }
 
 // health: healthy only when Postgres is, checked by go-healthcheck's probe and by the pool itself
