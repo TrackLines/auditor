@@ -95,3 +95,27 @@ func TestServeDrainsOnStop(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// /internal/ needs the backend's secret; with none configured, nothing gets in
+func TestInternalNeedsTheSecret(t *testing.T) {
+	db, _ := pool(t)
+	defer db.Close()
+	call := func(s *Service, auth string) int {
+		req := httptest.NewRequest(http.MethodPost, "/internal/events", strings.NewReader(`{"events":[]}`))
+		if auth != "" {
+			req.Header.Set("Authorization", auth)
+		}
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec.Code
+	}
+	s := &Service{DB: db, Secret: "s3cret"}
+	for auth, want := range map[string]int{"": 401, "Bearer wrong": 401, "s3cret": 401, "Bearer s3cret": 200} {
+		if got := call(s, auth); got != want {
+			t.Errorf("%q: %d, want %d", auth, got, want)
+		}
+	}
+	if got := call(&Service{DB: db}, "Bearer "); got != http.StatusServiceUnavailable {
+		t.Fatalf("no secret configured: %d", got)
+	}
+}

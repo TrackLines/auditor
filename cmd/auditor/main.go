@@ -18,6 +18,7 @@ import (
 
 	service "github.com/tracklines/auditor/internal"
 	"github.com/tracklines/auditor/internal/config"
+	"github.com/tracklines/auditor/internal/migrations"
 )
 
 func main() {
@@ -46,6 +47,13 @@ func run() error {
 	}
 	defer db.Close()
 	log.Printf("auditor: postgres at %s:%d", c.Database.Host, c.Database.Port)
-	s := &service.Service{DB: db, DBAddr: net.JoinHostPort(c.Database.Host, strconv.Itoa(c.Database.Port)), Port: c.Port()}
+	// migrate before serving, failing fast
+	if err := migrations.Up(db); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	if c.Secret == "" {
+		log.Print("auditor: AUDIT_SECRET isn't set, so /internal/ routes refuse everything")
+	}
+	s := &service.Service{DB: db, DBAddr: net.JoinHostPort(c.Database.Host, strconv.Itoa(c.Database.Port)), Port: c.Port(), Secret: c.Secret}
 	return s.Serve(ctx)
 }
