@@ -5,7 +5,8 @@ ticket's stages and, on Pro and Enterprise, the organization's audit log. It kee
 database**, so the backend can't change history. Only the backend talks to it, over Railway's private
 network; it has no public domain.
 
-It stores events (TL-663) and reads them back (TL-664). Retention and deletion (TL-665) come next.
+It stores events (TL-663), reads them back (TL-664), and deletes what's purged (TL-665). Plan retention
+(TL-676) comes next.
 
 ## Routes
 
@@ -44,6 +45,16 @@ won't help.
 The `events` table is append-only. A trigger refuses every `UPDATE`, `DELETE` and `TRUNCATE`, except deletes in a
 transaction that has set `auditor.purging = 'on'`, which only the auditor's own retention and deletion does.
 Migrations run on boot.
+
+### Purges
+
+The privacy policy's promises are kept as the backend's purge events arrive:
+
+- **`ticket.purged`:** that ticket's stages are deleted. Org log entries about it stay, since they hold only ids.
+- **`org.purged`:** every event of the organization is deleted, that one included.
+
+Both are remembered in `purged` (ids only), so events for them that arrive afterwards, from a late batch or a
+resend, are accepted but not kept. Each purge logs how many events it deleted.
 
 ## Configuration
 

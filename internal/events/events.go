@@ -108,6 +108,8 @@ func (s Store) Ingest(w http.ResponseWriter, r *http.Request) {
 
 // Store keeps the good events in one transaction. An id already kept for the same organization counts as
 // accepted (a resend); one kept for another organization is rejected, since the backend reused an id.
+// Events for a ticket or organization already purged are accepted but not kept, and purge events are
+// carried out (purge.go).
 func (s Store) Store(ctx context.Context, batch []Event) (Result, error) {
 	out := Result{Accepted: []string{}, Rejected: []Rejected{}}
 	var good []Event
@@ -126,8 +128,25 @@ func (s Store) Store(ctx context.Context, batch []Event) (Result, error) {
 	if len(good) == 0 {
 		return out, nil
 	}
-	rows, _ := json.Marshal(good)
 	err := pgx.BeginFunc(ctx, s.DB, func(tx pgx.Tx) error {
+		// events for what's already purged are taken and dropped: the backend can forget them
+		gone, err := purgedOf(ctx, tx, good)
+		if err != nil {
+			return err
+		}
+		keep := good[:0:0]
+		for _, e := range good {
+			if late(e, gone) {
+				out.Accepted = append(out.Accepted, e.ID)
+			} else {
+				keep = append(keep, e)
+			}
+		}
+		if len(keep) == 0 {
+			return nil
+		}
+		good = keep
+		rows, _ := json.Marshal(good)
 		if _, err := tx.Exec(ctx, `INSERT INTO events (id, org_id, at, actor, actor_kind, action, target_type, target_id, project_id, data)
 			SELECT id, org_id, at, actor, actor_kind, action, target_type, target_id, project_id, data
 			FROM jsonb_to_recordset($1::jsonb) AS e(id uuid, org_id text, at timestamptz, actor text, actor_kind text, action text,
@@ -155,14 +174,16 @@ func (s Store) Store(ctx context.Context, batch []Event) (Result, error) {
 		for _, p := range orgs {
 			owner[p[0]] = p[1]
 		}
+		var stored []Event
 		for _, e := range good {
 			if owner[uuid.MustParse(e.ID).String()] == e.OrgID {
 				out.Accepted = append(out.Accepted, e.ID)
+				stored = append(stored, e)
 			} else {
 				out.Rejected = append(out.Rejected, Rejected{e.ID, "id already used for another organization"})
 			}
 		}
-		return nil
+		return purge(ctx, tx, stored)
 	})
 	if err != nil {
 		return Result{}, err
