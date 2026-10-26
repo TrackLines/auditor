@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -66,7 +67,7 @@ func (s *Service) Serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	logs.Local().Logf("auditor: listening on %s", ln.Addr())
+	log.Printf("auditor: listening on %s", ln.Addr())
 	return serveOn(ctx, ln, s.Handler(), 15*time.Second)
 }
 
@@ -86,5 +87,6 @@ func serveOn(ctx context.Context, ln net.Listener, h http.Handler, drain time.Du
 	defer cancel()
 	err := srv.Shutdown(shutdown)
 	<-served
+	log.Print("auditor: stopped")
 	return err
 }
