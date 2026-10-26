@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -20,6 +21,11 @@ import (
 )
 
 func main() {
+	// progress goes to stdout with the standard logger: the Bugfixes SDK only prints at its log level
+	// (error, by default) once it has agent keys, so its Logf lines never reach Railway's logs
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.LstdFlags | log.LUTC)
+	log.Print("auditor: starting")
 	if err := run(); err != nil {
 		_ = logs.Errorf("auditor: %v", err)
 		time.Sleep(bugfixes.DefaultTimeout) // the SDK reports in the background: let it finish before exiting
@@ -39,6 +45,7 @@ func run() error {
 		return fmt.Errorf("connect postgres: %w", err)
 	}
 	defer db.Close()
+	log.Printf("auditor: postgres at %s:%d", c.Database.Host, c.Database.Port)
 	s := &service.Service{DB: db, DBAddr: net.JoinHostPort(c.Database.Host, strconv.Itoa(c.Database.Port)), Port: c.Port()}
 	return s.Serve(ctx)
 }
