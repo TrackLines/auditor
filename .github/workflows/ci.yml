@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go build ./...
+      # known vulnerabilities our code actually reaches (PCI DSS 6.3.1)
+      - run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+      - run: go test ./...
