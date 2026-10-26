@@ -23,8 +23,8 @@ are the same. A `.env` file is read when there is one; variables already set win
 |---|---|
 | `RDS_URL` | the auditor's **own** Postgres (not the backend's). Or `RDS_HOSTNAME`, `RDS_PORT`, `RDS_DB`, `RDS_USERNAME`, `RDS_PASSWORD` |
 | `PORT` / `HTTP_PORT` | where it listens: Railway's `PORT`, else `HTTP_PORT` (8080 in the image) |
-| `BUGFIXES_AGENT_KEY`, `BUGFIXES_AGENT_SECRET`, `BUGFIXES_SERVICE` | the [Bugfixes](https://bugfix.es) agent for the service `auditor`. Without them, or with `BUGFIXES_LOCAL_ONLY=true`, errors are only logged |
-| `OP_SERVICE_ACCOUNT_TOKEN` | 1Password: with it, the Bugfixes variables come from the `tracklines` vault, item `bugfixes_auditor` (`username`, `credential`, `service`) |
+| `BUGFIXES_AGENT_KEY`, `BUGFIXES_AGENT_SECRET` | the [Bugfixes](https://bugfix.es) agent; reports are sent as the service `auditor`. Without them, or with `BUGFIXES_LOCAL_ONLY=true`, errors are only logged |
+| `OP_SERVICE_ACCOUNT_TOKEN` | 1Password: with it, the Bugfixes variables come from the `tracklines` vault, item `bugfixes_auditor` (`username` is the agent key, `credential` the secret) |
 
 ## Railway
 

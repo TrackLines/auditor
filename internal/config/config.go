@@ -19,6 +19,9 @@ import (
 	"github.com/keloran/go-config/v2/onepassword"
 )
 
+// Service is the auditor's name in Bugfixes reports.
+const Service = "auditor"
+
 type Config struct {
 	Local    local.System
 	Database postgres.System
@@ -30,7 +33,6 @@ type Config struct {
 var secrets = map[string]string{
 	"bugfixes_auditor.username":   "BUGFIXES_AGENT_KEY",
 	"bugfixes_auditor.credential": "BUGFIXES_AGENT_SECRET",
-	"bugfixes_auditor.service":    "BUGFIXES_SERVICE",
 }
 
 // Build reads .env (if there is one; the environment wins), 1Password, then each part's settings, and
@@ -61,6 +63,7 @@ func Build() (*Config, error) {
 		AgentKey:    c.Bugfixes.AgentKey,
 		AgentSecret: c.Bugfixes.AgentSecret,
 		LocalOnly:   c.Local.KeepLocal,
+		Service:     Service,
 	}
 	bugfixes.SetDefaultConfig(bugfixesConfig)
 	logger := &logs.BugFixes{}
