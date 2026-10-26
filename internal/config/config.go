@@ -27,6 +27,12 @@ type Config struct {
 	Local    local.System
 	Database postgres.System
 	Bugfixes configbugfixes.System
+	Auditor  Auditor
+}
+
+// Auditor is the auditor's own settings. It's parsed on its own: parsing the whole Config would
+// re-read go-config's parts from the environment and undo what their Build did (RDS_URL's host).
+type Auditor struct {
 	// Secret is the token the backend sends to /internal/ routes (1Password audit_auditor; the
 	// backend's copy is audit_backend). Without it those routes refuse everything.
 	Secret string `env:"AUDIT_SECRET"`
@@ -62,7 +68,7 @@ func Build() (*Config, error) {
 		return nil, fmt.Errorf("bugfixes: %w", err)
 	}
 	c := &Config{Local: *l, Database: *db, Bugfixes: *bf}
-	if err := env.Parse(c); err != nil {
+	if err := env.Parse(&c.Auditor); err != nil {
 		return nil, fmt.Errorf("auditor settings: %w", err)
 	}
 

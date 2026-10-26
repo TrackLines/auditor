@@ -51,9 +51,9 @@ func run() error {
 	if err := migrations.Up(db); err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
-	if c.Secret == "" {
+	if c.Auditor.Secret == "" {
 		log.Print("auditor: AUDIT_SECRET isn't set, so /internal/ routes refuse everything")
 	}
-	s := &service.Service{DB: db, DBAddr: net.JoinHostPort(c.Database.Host, strconv.Itoa(c.Database.Port)), Port: c.Port(), Secret: c.Secret}
+	s := &service.Service{DB: db, DBAddr: net.JoinHostPort(c.Database.Host, strconv.Itoa(c.Database.Port)), Port: c.Port(), Secret: c.Auditor.Secret}
 	return s.Serve(ctx)
 }
