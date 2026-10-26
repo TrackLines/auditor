@@ -5,7 +5,7 @@ ticket's stages and, on Pro and Enterprise, the organization's audit log. It kee
 database**, so the backend can't change history. Only the backend talks to it, over Railway's private
 network; it has no public domain.
 
-So far it stores events (TL-663). Reading them back (TL-664) and retention (TL-665) come next.
+It stores events (TL-663) and reads them back (TL-664). Retention and deletion (TL-665) come next.
 
 ## Routes
 
@@ -14,7 +14,15 @@ So far it stores events (TL-663). Reading them back (TL-664) and retention (TL-6
 | `GET /health` | `200 {"name":"auditor","status":"pass"}` when its Postgres is reachable and usable, `503` with `"fail"` otherwise. It never shows addresses. |
 | `POST /internal/events` | the backend's events, up to 500 at a time: `{"events": [...]}` → `{"accepted": [ids], "rejected": [{"id", "reason"}]}`. Needs `Authorization: Bearer <AUDIT_SECRET>`. |
 
-`/internal/` routes are for the backend only. Without `AUDIT_SECRET` they refuse everything (503).
+| `GET /internal/orgs/{org}/tickets/{ticket}/history` | that ticket's `ticket.stage` events, oldest first, in exactly the shape of the backend's `GET /api/tickets/{id}/history` |
+| `GET /internal/orgs/{org}/events` | the org log, newest first: `?actor=&action=&target_type=&target_id=&project_id=&from=&to=&since=&cursor=&limit=` → `{"events": [...], "next_cursor": "…" or null}` |
+
+`/internal/` routes are for the backend only, which checks who's asking and their plan first.
+
+**The org log:**
+- `action` is exact, or a prefix when it ends in a dot (`api_key.`). Ticket stages are left out unless `action` asks for them.
+- `from`, `to` and `since` are RFC 3339. `since` is how far back the org's plan keeps events, so expired events never show, even before they're purged.
+- `limit` is 1 to 200 (default 50). Pass `next_cursor` as `cursor` for the next, older page. Without `AUDIT_SECRET` they refuse everything (503).
 
 ### Events
 

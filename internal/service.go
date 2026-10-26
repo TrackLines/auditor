@@ -32,7 +32,9 @@ func (s *Service) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
 	ev := events.Store{DB: s.DB}
-	mux.Handle("POST /internal/events", s.backendOnly(ev.Ingest)) // TL-663
+	mux.Handle("POST /internal/events", s.backendOnly(ev.Ingest))                              // TL-663
+	mux.Handle("GET /internal/orgs/{org}/tickets/{ticket}/history", s.backendOnly(ev.History)) // TL-664
+	mux.Handle("GET /internal/orgs/{org}/events", s.backendOnly(ev.Log))
 	return mux
 }
 
