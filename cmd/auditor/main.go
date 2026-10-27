@@ -18,6 +18,7 @@ import (
 
 	service "github.com/tracklines/auditor/internal"
 	"github.com/tracklines/auditor/internal/config"
+	"github.com/tracklines/auditor/internal/events"
 	"github.com/tracklines/auditor/internal/migrations"
 )
 
@@ -55,5 +56,7 @@ func run() error {
 		log.Print("auditor: AUDIT_SECRET isn't set, so /internal/ routes refuse everything")
 	}
 	s := &service.Service{DB: db, DBAddr: net.JoinHostPort(c.Database.Host, strconv.Itoa(c.Database.Port)), Port: c.Port(), Secret: c.Auditor.Secret}
+	// the org log's retention (TL-676): once soon after starting, then daily
+	go events.Retention{DB: db}.Run(ctx, 24*time.Hour)
 	return s.Serve(ctx)
 }

@@ -78,7 +78,8 @@ func purge(ctx context.Context, tx pgx.Tx, evs []Event) error {
 		case e.Action == "org.purged":
 			del = `DELETE FROM events WHERE org_id = $1`
 			// the org's own mark stands for all of it: its tickets' marks are no longer needed
-			mark = `WITH tickets AS (DELETE FROM purged WHERE org_id = $1 AND ticket_id <> '')
+			mark = `WITH tickets AS (DELETE FROM purged WHERE org_id = $1 AND ticket_id <> ''),
+				plan AS (DELETE FROM org_plans WHERE org_id = $1)
 				INSERT INTO purged (org_id) VALUES ($1) ON CONFLICT DO NOTHING`
 			args = []any{e.OrgID}
 		default:

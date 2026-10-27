@@ -183,6 +183,9 @@ func (s Store) Store(ctx context.Context, batch []Event) (Result, error) {
 				out.Rejected = append(out.Rejected, Rejected{e.ID, "id already used for another organization"})
 			}
 		}
+		if err := plans(ctx, tx, stored); err != nil {
+			return err
+		}
 		return purge(ctx, tx, stored)
 	})
 	if err != nil {
