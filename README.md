@@ -5,8 +5,8 @@ ticket's stages and, on Pro and Enterprise, the organization's audit log. It kee
 database**, so the backend can't change history. Only the backend talks to it, over Railway's private
 network; it has no public domain.
 
-It stores events (TL-663), reads them back (TL-664), and deletes what's purged (TL-665). Plan retention
-(TL-676) comes next.
+It stores events (TL-663), reads them back (TL-664), deletes what's purged (TL-665), and ages out the
+org log by plan (TL-676).
 
 ## Routes
 
@@ -92,3 +92,17 @@ Publishing the Release Drafter draft creates a `v*` tag, and `.github/workflows/
 go test ./...   # starts a throwaway Postgres in Docker (testcontainers)
 go run ./cmd/auditor
 ```
+
+### Retention
+
+- **Plans:** each organization's plan comes from the backend's `org.plan_changed` events. The newest wins,
+  so a late, older event can't undo a newer one. They're kept in `org_plans` and deleted with the org.
+- **Daily sweep**, soon after start and then every 24 hours, deletes **org log** entries older than a year:
+  - on any plan but **Enterprise**, which keeps them for as long as the organization exists;
+  - org log means everything except a ticket's own activity, though a ticket's deletion trail counts as
+    org log;
+  - a ticket's own activity lives as long as the ticket.
+- **Unknown plan:** an organization the auditor has no plan for keeps everything. Deleting is the one
+  mistake that can't be undone.
+- Each sweep logs how many it deleted.
+
