@@ -35,6 +35,7 @@ func (s *Service) Handler() http.Handler {
 	mux.Handle("POST /internal/events", s.backendOnly(ev.Ingest))                              // TL-663
 	mux.Handle("GET /internal/orgs/{org}/tickets/{ticket}/history", s.backendOnly(ev.History)) // TL-664
 	mux.Handle("GET /internal/orgs/{org}/events", s.backendOnly(ev.Log))
+	mux.Handle("GET /internal/orgs/{org}/tickets/{ticket}/activity", s.backendOnly(ev.Activity)) // TL-678
 	return mux
 }
 

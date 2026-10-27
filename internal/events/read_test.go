@@ -81,7 +81,7 @@ func TestOrgLog(t *testing.T) {
 	add(1, "api_key.revoked", "user_2", nil)
 	add(2, "member.removed", "user_1", func(e *Event) { e.TargetType, e.TargetID = str("member"), str("user_9") })
 	add(3, "board.created", "user_2", func(e *Event) { e.ProjectID = &project })
-	add(4, "ticket.stage", "user_1", nil) // left out unless asked for
+	add(4, "ticket.stage", "user_1", func(e *Event) { e.TargetType, e.TargetID = str("ticket"), str(uuid.NewString()) }) // left out unless asked for
 	add(5, "org.settings_changed", "user_1", nil)
 	elsewhere := batch[0]
 	elsewhere.ID, elsewhere.OrgID = uuid.NewString(), "org_log_other"
