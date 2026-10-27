@@ -85,7 +85,8 @@ type Page struct {
 }
 
 // Filter narrows the org log. Action is exact, or a prefix when it ends in a dot (api_key.). Without an
-// action, ticket stages are left out: every move of every ticket would bury what the log is for.
+// action, ticket activity (stages, edits, comments, files…) is left out except its deletion trail: every
+// change to every ticket would bury what the log is for (TL-678).
 type Filter struct {
 	Actor, Action, TargetType, TargetID, ProjectID string
 	From, To, Since                                time.Time // From and Since are inclusive, To exclusive
@@ -157,7 +158,7 @@ func (s Store) Page(ctx context.Context, org string, f Filter) (Page, error) {
 	}
 	switch {
 	case f.Action == "":
-		where = append(where, "action <> 'ticket.stage'")
+		where = append(where, "(target_type IS DISTINCT FROM 'ticket' OR action IN "+trailSQL+")")
 	case strings.HasSuffix(f.Action, "."):
 		add("starts_with(action, ?)", f.Action)
 	default:
@@ -180,16 +181,7 @@ func (s Store) Page(ctx context.Context, org string, f Filter) (Page, error) {
 		add("seq < ?", f.Cursor)
 	}
 	args = append(args, f.Limit+1) // one more, to know there's a next page
-	rows, err := s.DB.Query(ctx, `SELECT id::text, seq, to_char(at AT TIME ZONE 'UTC', `+utc+`), actor, actor_kind, action,
-			target_type, target_id, project_id::text, data
-		FROM events WHERE `+strings.Join(where, " AND ")+` ORDER BY seq DESC LIMIT $`+strconv.Itoa(len(args)), args...)
-	if err != nil {
-		return Page{}, err
-	}
-	evs, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Stored, error) {
-		var e Stored
-		return e, row.Scan(&e.ID, &e.Seq, &e.At, &e.Actor, &e.ActorKind, &e.Action, &e.TargetType, &e.TargetID, &e.ProjectID, &e.Data)
-	})
+	evs, err := s.stored(ctx, `WHERE `+strings.Join(where, " AND ")+` ORDER BY seq DESC LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
 		return Page{}, err
 	}
@@ -203,6 +195,35 @@ func (s Store) Page(ctx context.Context, org string, f Filter) (Page, error) {
 		out.NextCursor = &next
 	}
 	return out, nil
+}
+
+const storedCols = `id::text, seq, to_char(at AT TIME ZONE 'UTC', ` + utc + `), actor, actor_kind, action, target_type, target_id, project_id::text, data`
+
+// stored reads events in the org log's shape; tail is the WHERE onwards.
+func (s Store) stored(ctx context.Context, tail string, args ...any) ([]Stored, error) {
+	rows, err := s.DB.Query(ctx, `SELECT `+storedCols+` FROM events `+tail, args...)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Stored, error) {
+		var e Stored
+		return e, row.Scan(&e.ID, &e.Seq, &e.At, &e.Actor, &e.ActorKind, &e.Action, &e.TargetType, &e.TargetID, &e.ProjectID, &e.Data)
+	})
+}
+
+// Activity is GET /internal/orgs/{org}/tickets/{ticket}/activity: everything that happened to the
+// ticket (TL-678), oldest first, by when it happened and then when it was stored, in the org log's shape.
+func (s Store) Activity(w http.ResponseWriter, r *http.Request) {
+	out, err := s.stored(r.Context(), `WHERE org_id = $1 AND target_type = 'ticket' AND target_id = $2 ORDER BY at, seq`,
+		r.PathValue("org"), r.PathValue("ticket"))
+	if err != nil {
+		fail(w, r, err)
+		return
+	}
+	if out == nil {
+		out = []Stored{}
+	}
+	reply(w, out)
 }
 
 func reply(w http.ResponseWriter, v any) {

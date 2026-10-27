@@ -16,12 +16,13 @@ It stores events (TL-663), reads them back (TL-664), and deletes what's purged (
 | `POST /internal/events` | the backend's events, up to 500 at a time: `{"events": [...]}` → `{"accepted": [ids], "rejected": [{"id", "reason"}]}`. Needs `Authorization: Bearer <AUDIT_SECRET>`. |
 
 | `GET /internal/orgs/{org}/tickets/{ticket}/history` | that ticket's `ticket.stage` events, oldest first, in exactly the shape of the backend's `GET /api/tickets/{id}/history` |
+| `GET /internal/orgs/{org}/tickets/{ticket}/activity` | everything that happened to the ticket (stages, edits, assignment, comments, files…), oldest first, in the org log's event shape |
 | `GET /internal/orgs/{org}/events` | the org log, newest first: `?actor=&action=&target_type=&target_id=&project_id=&from=&to=&since=&cursor=&limit=` → `{"events": [...], "next_cursor": "…" or null}` |
 
 `/internal/` routes are for the backend only, which checks who's asking and their plan first.
 
 **The org log:**
-- `action` is exact, or a prefix when it ends in a dot (`api_key.`). Ticket stages are left out unless `action` asks for them.
+- `action` is exact, or a prefix when it ends in a dot (`api_key.`). Ticket activity, meaning anything aimed at a ticket, is left out unless `action` asks for it, except its deletion trail: `ticket.deleted`, `ticket.restored` and `ticket.purged`.
 - `from`, `to` and `since` are RFC 3339. `since` is how far back the org's plan keeps events, so expired events never show, even before they're purged.
 - `limit` is 1 to 200 (default 50). Pass `next_cursor` as `cursor` for the next, older page. Without `AUDIT_SECRET` they refuse everything (503).
 
@@ -50,7 +51,7 @@ Migrations run on boot.
 
 The privacy policy's promises are kept as the backend's purge events arrive:
 
-- **`ticket.purged`:** that ticket's stages are deleted. Org log entries about it stay, since they hold only ids.
+- **`ticket.purged`:** all of the ticket's activity is deleted, except its deletion trail (`ticket.deleted`, `ticket.restored`, `ticket.purged`: who did it, ids only), which stays for the org log.
 - **`org.purged`:** every event of the organization is deleted, that one included.
 
 Both are remembered in `purged` (ids only), so events for them that arrive afterwards, from a late batch or a
