@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
-	github.com/keloran/go-config/v2 v2.1.0
+	github.com/keloran/go-config/v2 v2.1.1
 	github.com/keloran/go-healthcheck v1.3.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
 )
