@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"runtime/debug"
 	"strconv"
 
 	bugfixes "github.com/bugfixes/go-bugfixes"
@@ -55,6 +56,9 @@ func Build() (*Config, error) {
 	if err := onepassword.Load("tracklines", secrets); err != nil {
 		return nil, fmt.Errorf("1password: %w", err)
 	}
+	// The 1Password SDK runs in a WASM engine that leaves ~100MB of garbage behind; hand it back to
+	// the OS now rather than paying Railway for it until the heap grows into it.
+	debug.FreeOSMemory()
 	l, err := local.Build()
 	if err != nil {
 		return nil, fmt.Errorf("local: %w", err)
