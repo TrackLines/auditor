@@ -83,8 +83,8 @@ github.com/keloran/go-config/v2 v2.1.1 h1:4wF2NQLFNLe89XNtADe8vnEoL82k1C8FIxZP+Y
 github.com/keloran/go-config/v2 v2.1.1/go.mod h1:r7B1BEJs2xH00BBkCkvHfzGxPtwTqbKMftjMncaTp3o=
 github.com/keloran/go-healthcheck v1.3.0 h1:w6N05gi2qqK7ZDKsX/t1mj148mohU+gLjuOfFnHaphY=
 github.com/keloran/go-healthcheck v1.3.0/go.mod h1:3I84hg5fp0zfvINXxW7LcGhgLmqX3FJg7i+UCoaBW+Y=
-github.com/klauspost/compress v1.19.2 h1:hMRETovs/pu/dVWN7zIT1PGG8t509MwT6bO7XSi26R8=
-github.com/klauspost/compress v1.19.2/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
+github.com/klauspost/compress v1.20.3 h1:zWNoFqq/lSuYQRim3dUXlXeA0IqwuZGicdG5ZTfY5j4=
+github.com/klauspost/compress v1.20.3/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lufia/plan9stats v0.0.0-20260627054121-477a66015f15 h1:YkjVPl/YH5XlJ+/NiwzJtPYXXKRcyjmEUhsDci6YK3c=
