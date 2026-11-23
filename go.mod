@@ -5,7 +5,7 @@ go 1.26.1
 toolchain go1.27.4
 
 require (
-	github.com/bugfixes/go-bugfixes v0.19.5
+	github.com/bugfixes/go-bugfixes v0.19.6
 	github.com/caarlos0/env/v8 v8.0.0
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
